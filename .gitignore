@@ -1,0 +1,11 @@
+# Processing & Android generated files
+app/build/
+.gradle/
+build/
+bin/
+gen/
+*.class
+.DS_Store
+local.properties
+.idea/
+*.iml

@@ -7,9 +7,14 @@ public class AppletMain extends PApplet {
     private CatCharacter cat;
     private float scale = 1.0f;
 
-    // もっと大きく表示するために、基準サイズを小さくしました。
-    // 1000 -> 600 に変更したため、計算される倍率が約1.6倍大きくなります。
+    // 基本の基準サイズ（縦画面や正方形のとき用）
+    // この値を小さくすると、全体的にキャラが大きくなります。
     private final float DESIGN_REF_SIZE = 600.0f; 
+
+    // ★追加: 横画面の時に「さらに」どれくらい大きくするか（倍率）
+    // 1.0だと変化なし、1.5だと1.5倍になります。
+    // お好みで 1.2f ～ 1.8f くらいの間で調整してください。
+    private final float LANDSCAPE_SCALE_FACTOR = 2.0f;
 
     @Override
     public void settings() {
@@ -20,10 +25,18 @@ public class AppletMain extends PApplet {
     public void setup() {
         frameRate(60);
 
+        // 画面の短い方の辺（縦持ちなら幅、横持ちなら高さ）を取得
         float shorterSide = min(width, height);
 
-        // 自動サイズ調整ロジック
+        // 基本のサイズ計算
         scale = shorterSide / DESIGN_REF_SIZE;
+
+        // ★追加: 横画面（幅 > 高さ）の場合の特別処理
+        if (width > height) {
+            // 横画面なら、さらに拡大倍率をかける
+            scale *= LANDSCAPE_SCALE_FACTOR;
+            println("Landscape mode detected! Applying extra scale: x" + LANDSCAPE_SCALE_FACTOR);
+        }
 
         println("Detected Screen Size: " + width + "x" + height);
         println("Calculated Scale: " + scale);
@@ -35,10 +48,8 @@ public class AppletMain extends PApplet {
     public void draw() {
         background(0);
         
-        // 【修正】translateを削除しました。
-        // CatCharacter側ですでに画面中央(width/2, height/2)を使う計算になっている場合、
-        // ここでtranslateすると二重に移動して右下にずれてしまうためです。
-        // translate(width / 2, height / 2); 
+        // CatCharacter側で画面中央(width/2, height/2)を使う計算になっているため
+        // ここでのtranslateは不要です。
 
         if (cat != null) {
             cat.update();

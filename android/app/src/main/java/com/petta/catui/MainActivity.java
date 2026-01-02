@@ -13,6 +13,8 @@ import processing.core.PApplet;
 
 import com.petta.catui.core.AppletMain;
 
+import com.petta.catui.ui.CATUIApp;
+
 public class MainActivity extends AppCompatActivity {
   private PApplet sketch;
 
@@ -24,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     frame.setId(CompatUtils.getUniqueViewId());
     setContentView(frame);
 
-    sketch = new AppletMain();  // ★ YOUR APPLET
+    sketch = new com.petta.catui.ui.CATUIApp();  // ★ YOUR APPLET
     PFragment fragment = new PFragment(sketch);
     fragment.setView(frame, this);
   }

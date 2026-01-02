@@ -1,8 +1,10 @@
 // TextDisplay.java - テキスト表示システム
 package com.petta.catui.text;
+
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PFont;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,32 +13,45 @@ import java.util.List;
  */
 public class TextDisplay {
   private final PApplet app;
-  private final float scale;
+  private float scale;
   private final TextScrollerSimple scroller;
-  
+
   // 表示位置の設定
-  private final float textX;
-  private final float textY;
-  
+  private float textX;
+  private float textY;
+
   // 自動送り設定
   private boolean autoAdvanceEnabled = true;
   private int autoAdvanceDelay = 180; // 3秒（60fps * 3）
-  
+
   public TextDisplay(PApplet app, float globalScale) {
     this.app = app;
     this.scale = globalScale;
-    
+
     // テキスト表示位置を計算（画面下部中央）
     this.textX = app.width * 0.5f;
     this.textY = app.height * 0.75f;
-    
+
     // TextScrollerSimpleを初期化
     this.scroller = new TextScrollerSimple(app, textX, textY, globalScale);
-    
+
     // 自動送り設定を適用
     this.scroller.setAutoAdvance(autoAdvanceEnabled, autoAdvanceDelay);
   }
-  
+
+  /**
+   * ★画面回転 / リサイズ時に呼ぶ
+   * CATUIApp 側から textDisplay.onScreenResized(...) を呼べるようにする窓口
+   */
+  public void onScreenResized(float newScale, int screenW, int screenH) {
+    this.scale = newScale;
+    this.textX = screenW * 0.5f;
+    this.textY = screenH * 0.75f;
+
+    // 中のスクローラにも伝える（描画位置・フォント更新）
+    scroller.onScreenResized(newScale, screenW, screenH);
+  }
+
   /**
    * メッセージを表示開始
    * @param message 表示したいテキスト（改行 \n 対応）
@@ -44,28 +59,28 @@ public class TextDisplay {
   public void showMessage(String message) {
     scroller.setText(message);
   }
-  
+
   /**
    * 次のページに進む（スペースキー等で呼び出し）
    */
   public void nextPage() {
     scroller.nextPage();
   }
-  
+
   /**
    * 更新処理（draw()内で呼び出し）
    */
   public void update() {
     scroller.update();
   }
-  
+
   /**
    * 描画処理（draw()内で呼び出し）
    */
   public void draw() {
     scroller.draw();
   }
-  
+
   /**
    * タイピング速度を変更
    * @param speed 1フレームあたりの文字数（1〜10推奨）
@@ -73,7 +88,7 @@ public class TextDisplay {
   public void setSpeed(int speed) {
     scroller.setSpeed(speed);
   }
-  
+
   /**
    * 現在テキスト表示中かどうか
    * @return 表示中ならtrue
@@ -81,7 +96,7 @@ public class TextDisplay {
   public boolean isDisplaying() {
     return scroller.hasContent();
   }
-  
+
   /**
    * 自動文字送りの有効/無効を設定
    * @param enabled true=自動送り有効, false=手動送りのみ
@@ -90,7 +105,7 @@ public class TextDisplay {
     this.autoAdvanceEnabled = enabled;
     scroller.setAutoAdvance(enabled, autoAdvanceDelay);
   }
-  
+
   /**
    * 自動文字送りの待機時間を設定
    * @param delayFrames 待機フレーム数（60fps基準, 180=3秒）
@@ -99,7 +114,7 @@ public class TextDisplay {
     this.autoAdvanceDelay = delayFrames;
     scroller.setAutoAdvance(autoAdvanceEnabled, delayFrames);
   }
-  
+
   /**
    * 自動文字送りの設定を一度に行う
    * @param enabled true=自動送り有効
@@ -118,16 +133,16 @@ public class TextDisplay {
 class TextScrollerSimple {
   // Processing参照
   private final PApplet app;
-  
+
   // 表示設定
-  private final float x, y;
-  private final float scale;
-  private final PFont font;
-  
+  private float x, y;
+  private float scale;
+  private PFont font;
+
   // ページ管理
   private final List<String> pages = new ArrayList<>();
   private int currentPageIndex = 0;
-  
+
   // アニメーション状態
   private String currentPageText = "";
   private String displayText = "";
@@ -135,23 +150,39 @@ class TextScrollerSimple {
   private int animationTimer = 0;
   private int typingSpeed = 3;
   private boolean isPageComplete = false;
-  
+
   // 自動送り設定
   private boolean autoAdvanceEnabled = false;
   private int autoAdvanceDelay = 180; // 3秒
   private int autoAdvanceTimer = 0;
-  
+
   public TextScrollerSimple(PApplet app, float x, float y, float globalScale) {
     this.app = app;
     this.x = x;
     this.y = y;
     this.scale = globalScale;
-    
+
     // フォント設定
     float fontSize = 28 * globalScale;
     this.font = app.createFont("SansSerif", fontSize);
   }
-  
+
+  /**
+   * ★画面回転 / リサイズ時に呼ぶ（TextDisplay から呼ばれる）
+   * 位置・スケール・フォントを更新する
+   */
+  public void onScreenResized(float newScale, int screenW, int screenH) {
+    this.scale = newScale;
+    this.x = screenW * 0.5f;
+    this.y = screenH * 0.75f;
+
+    float fontSize = 28 * newScale;
+    this.font = app.createFont("SansSerif", fontSize);
+
+    // 幅基準が変わるので、次に setText した時の測定で反映される
+    // もし「表示中の文章も即時に折り返しし直したい」なら、現在テキスト保持して再divideも可能
+  }
+
   /**
    * テキストを設定して表示開始
    */
@@ -162,38 +193,38 @@ class TextScrollerSimple {
       displayText = "";
       return;
     }
-    
+
     // ページ分割
     divideIntoPages(text);
-    
+
     // 最初のページから開始
     currentPageIndex = 0;
     startCurrentPage();
   }
-  
+
   /**
    * テキストをページに分割
    */
   private void divideIntoPages(String text) {
     pages.clear();
-    
+
     // フォント設定してから幅を測定
     app.textFont(font);
     float maxWidth = app.width * 0.9f; // 画面幅の90%を使用
 
     // 改行で段落に分割
     String[] paragraphs = text.split("\\n");
-    
+
     for (String paragraph : paragraphs) {
       if (paragraph.trim().isEmpty()) {
         continue;
       }
-      
+
       // 長い段落は文字数で分割
       String currentLine = "";
       for (char ch : paragraph.toCharArray()) {
         String testLine = currentLine + ch;
-        
+
         if (app.textWidth(testLine) > maxWidth && !currentLine.isEmpty()) {
           // 行が長すぎる場合は分割
           pages.add(currentLine.trim());
@@ -202,19 +233,19 @@ class TextScrollerSimple {
           currentLine += ch;
         }
       }
-      
+
       // 残りの文字を追加
       if (!currentLine.trim().isEmpty()) {
         pages.add(currentLine.trim());
       }
     }
-    
+
     // 空の場合は空文字を追加
     if (pages.isEmpty()) {
       pages.add("");
     }
   }
-  
+
   /**
    * 現在のページのタイピングアニメーション開始
    */
@@ -224,14 +255,14 @@ class TextScrollerSimple {
     } else {
       currentPageText = "";
     }
-    
+
     displayText = "";
     characterIndex = 0;
     animationTimer = 0;
     autoAdvanceTimer = 0; // 自動送りタイマーリセット
     isPageComplete = false;
   }
-  
+
   /**
    * 次のページに進む
    */
@@ -248,7 +279,7 @@ class TextScrollerSimple {
       startCurrentPage();
     }
   }
-  
+
   /**
    * 更新処理
    */
@@ -256,19 +287,19 @@ class TextScrollerSimple {
     // タイピングアニメーション
     if (!isPageComplete && characterIndex < currentPageText.length()) {
       animationTimer++;
-      
+
       if (animationTimer % typingSpeed == 0) {
         characterIndex++;
         displayText = currentPageText.substring(0, characterIndex);
       }
     }
-    
+
     // アニメーション完了チェック
     if (!isPageComplete && characterIndex >= currentPageText.length()) {
       isPageComplete = true;
       autoAdvanceTimer = 0; // 完了時に自動送りタイマー開始
     }
-    
+
     // 自動送り処理
     if (isPageComplete && autoAdvanceEnabled && hasNextPage()) {
       autoAdvanceTimer++;
@@ -277,7 +308,7 @@ class TextScrollerSimple {
       }
     }
   }
-  
+
   /**
    * 描画処理
    */
@@ -285,46 +316,46 @@ class TextScrollerSimple {
     if (displayText.isEmpty()) {
       return;
     }
-    
+
     app.pushStyle();
     app.textFont(font);
     app.textAlign(PConstants.CENTER, PConstants.CENTER);
     app.fill(255);
-    
+
     // テキスト描画
     app.text(displayText, x, y);
-    
+
     // 続きがある場合の表示（点滅）
     if (isPageComplete && hasNextPage()) {
       if (app.frameCount % 60 < 30) { // 0.5秒間隔で点滅
         app.text("▼", x, y + 50 * scale);
       }
     }
-    
+
     app.popStyle();
   }
-  
+
   /**
    * タイピング速度設定
    */
   public void setSpeed(int speed) {
     this.typingSpeed = Math.max(1, speed);
   }
-  
+
   /**
    * 次のページがあるかチェック
    */
   private boolean hasNextPage() {
     return currentPageIndex < pages.size() - 1;
   }
-  
+
   /**
    * 表示すべきコンテンツがあるかチェック
    */
   public boolean hasContent() {
     return !pages.isEmpty() && !currentPageText.isEmpty();
   }
-  
+
   /**
    * 自動送り設定
    * @param enabled 自動送り有効/無効
